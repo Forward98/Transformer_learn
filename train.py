@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from Optim import CosineWithRestarts
 from Batch import create_masks
 import dill as pickle
+import os
 
 def train_model(model, opt):
     
@@ -28,8 +29,12 @@ def train_model(model, opt):
                     
         for i, batch in enumerate(opt.train): 
 
-            src = batch.src.transpose(0, 1).to(opt.device)
-            trg = batch.trg.transpose(0, 1).to(opt.device)
+            # src = batch.src.transpose(0, 1).to(opt.device)
+            # trg = batch.trg.transpose(0, 1).to(opt.device)
+            # src = torch.tensor(batch[0]).transpose(0, 1).to(opt.device)
+            # trg = torch.tensor(batch[1]).transpose(0, 1).to(opt.device)
+            src = batch[0].transpose(0, 1).to(opt.device)
+            trg = batch[1].transpose(0, 1).to(opt.device)
             trg_input = trg[:, :-1]
             src_mask, trg_mask = create_masks(src, trg_input, opt)
             src_mask.to(opt.device)
@@ -66,28 +71,61 @@ def train_model(model, opt):
 
 def main():
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-src_data', required=True)
-    parser.add_argument('-trg_data', required=True)
-    parser.add_argument('-src_lang', required=True)
-    parser.add_argument('-trg_lang', required=True)
-    parser.add_argument('-no_cuda', action='store_true')
-    parser.add_argument('-SGDR', action='store_true')
-    parser.add_argument('-epochs', type=int, default=2)
-    parser.add_argument('-d_model', type=int, default=512)
-    parser.add_argument('-n_layers', type=int, default=6)
-    parser.add_argument('-heads', type=int, default=8)
-    parser.add_argument('-dropout', type=int, default=0.1)
-    parser.add_argument('-batchsize', type=int, default=1500)
-    parser.add_argument('-printevery', type=int, default=100)
-    parser.add_argument('-lr', type=int, default=0.0001)
-    parser.add_argument('-load_weights')
-    parser.add_argument('-create_valset', action='store_true')
-    parser.add_argument('-max_strlen', type=int, default=80)
-    parser.add_argument('-floyd', action='store_true')
-    parser.add_argument('-checkpoint', type=int, default=0)
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument('-src_data', required=True)
+    # parser.add_argument('-trg_data', required=True)
+    # parser.add_argument('-src_lang', required=True)
+    # parser.add_argument('-trg_lang', required=True)
+    # parser.add_argument('-no_cuda', action='store_true')
+    # parser.add_argument('-SGDR', action='store_true')
+    # parser.add_argument('-epochs', type=int, default=2)
+    # parser.add_argument('-d_model', type=int, default=512)
+    # parser.add_argument('-n_layers', type=int, default=6)
+    # parser.add_argument('-heads', type=int, default=8)
+    # parser.add_argument('-dropout', type=int, default=0.1)
+    # parser.add_argument('-batchsize', type=int, default=1500)
+    # parser.add_argument('-printevery', type=int, default=100)
+    # parser.add_argument('-lr', type=int, default=0.0001)
+    # parser.add_argument('-load_weights')
+    # parser.add_argument('-create_valset', action='store_true')
+    # parser.add_argument('-max_strlen', type=int, default=80)
+    # parser.add_argument('-floyd', action='store_true')
+    # parser.add_argument('-checkpoint', type=int, default=0)
 
-    opt = parser.parse_args()
+    # opt = parser.parse_args()
+
+    # 指定参数值
+    opt = type('Options', (object,), {})()  # 创建一个空对象来存储参数
+
+    # 数据相关参数
+    base_dir = r'E:\transformer_learn\Transformer_learn\data'
+    opt.src_data = os.path.join(base_dir, 'english.txt')
+    opt.trg_data = os.path.join(base_dir, 'french.txt')
+
+    print("完整路径:", opt.src_data)
+    print("文件是否存在:", os.path.exists(opt.src_data))
+
+    opt.src_lang = 'en_core_web_sm'    # 源语言
+    opt.trg_lang = 'fr_core_news_sm'   # 目标语言
+
+    # 模型相关参数
+    opt.d_model = 512                  # 嵌入维度
+    opt.n_layers = 6                   # Transformer层数
+    opt.heads = 8                      # 多头注意力头数
+    opt.dropout = 0.1                  # Dropout概率
+
+    # 训练相关参数
+    opt.epochs = 2                     # 训练周期数
+    opt.batchsize = 1500               # 批量大小（以token数为单位）
+    opt.printevery = 100               # 每隔多少次迭代打印一次损失
+    opt.lr = 0.0001                    # 学习率
+    opt.no_cuda = False                # 是否禁用CUDA
+    opt.SGDR = False                   # 是否使用SGDR优化器，用途是周期性地重启学习率来加速收敛
+    opt.load_weights = None            # 是否加载预训练权重
+    opt.create_valset = False          # 是否创建验证集
+    opt.max_strlen = 80                # 最大句子长度
+    opt.floyd = False                  # 是否在FloydHub上运行
+    opt.checkpoint = 0                 # 是否定期保存模型权重    
 
     opt.device = 'cuda' if opt.no_cuda is False else 'cpu'
     if opt.device == 'cuda':
