@@ -116,7 +116,7 @@ def main():
 
     # 训练相关参数
     opt.epochs = 2                     # 训练周期数
-    opt.batchsize = 1500               # 批量大小（以token数为单位）
+    opt.batchsize = 150               # 批量大小（以token数为单位）
     opt.printevery = 100               # 每隔多少次迭代打印一次损失
     opt.lr = 0.0001                    # 学习率
     opt.no_cuda = False                # 是否禁用CUDA
