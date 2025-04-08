@@ -273,6 +273,11 @@ def read_data(opt):
         try:
             with open(opt.src_data, 'r', encoding='utf-8') as f:
                 opt.src_data = f.read().strip().split('\n')
+                """
+                opt.src_data的输出示例如下, 就是将每个句子字符串都抽取出来
+                000000 = 'Go.'
+                000001 = 'Run!'
+                """
                 print("文件读取成功！")
         except:
             print("error: '" + opt.src_data + "' file not found")
@@ -295,6 +300,7 @@ def create_fields(opt):
         print('invalid trg language: ' + opt.trg_lang + ' supported languages : ' + str(spacy_langs))
     
     print("loading spacy tokenizers...")
+    # 加载源语言的分词器
     t_src = tokenize(opt.src_lang)
     t_trg = tokenize(opt.trg_lang)
 
@@ -302,7 +308,10 @@ def create_fields(opt):
     SRC = torchtext.data.Field(
         tokenize=t_src.tokenizer,
         lower=True,
+        # lower 是 Field 的一个参数，表示是否将文本转换为小写。
         include_lengths=True
+        # include_lengths 是 Field 的一个参数，表示是否在处理文本时返回文本的长度信息。
+        # 设置为 True 时，Field 会在处理文本时返回两个值：一个是分词后的文本，另一个是文本的长度
     )
     TRG = torchtext.data.Field(
         tokenize=t_trg.tokenizer,
@@ -325,7 +334,10 @@ def create_dataset(opt, SRC, TRG):
     print("creating dataset and iterator... ")
     raw_data = {'src' : [line for line in opt.src_data], 'trg': [line for line in opt.trg_data]}
     df = pd.DataFrame(raw_data, columns=["src", "trg"])
+    # 计算源数据和目标数据中每个句子的长度（以空格分隔的单词数）
+    # df['src'].str.count(' ')：计算源数据中每个句子的空格数量，这可以近似表示句子的长度
     mask = (df['src'].str.count(' ') < opt.max_strlen) & (df['trg'].str.count(' ') < opt.max_strlen)
+    # 使用掩码过滤数据框，只保留长度符合条件的句子
     df = df.loc[mask]
     df.to_csv("translate_transformer_temp.csv", index=False)
     
@@ -354,21 +366,25 @@ def create_dataset(opt, SRC, TRG):
                 quit()
             pickle.dump(SRC.vocab, open('weights/SRC.pkl', 'wb'))
             pickle.dump(TRG.vocab, open('weights/TRG.pkl', 'wb'))
-    
+    # 构建词汇表
     opt.src_pad = SRC.vocab.stoi['<pad>']
     opt.trg_pad = TRG.vocab.stoi['<pad>']
 
     def collate_batch(batch, SRC, TRG):
         src_list, trg_list = [], []
         for src, trg in batch:
+            # src = 'I was really surprised.'
             src_tokens = SRC.tokenize(src)
+            #src_tokens = ['I', 'was', 'really', 'surprised', '.']
             trg_tokens = TRG.tokenize(trg)
             
             # 将分词后的文本转换为数值
             src_numerical = [SRC.vocab.stoi[token] for token in src_tokens]
+            # src_numerical = [8, 0, 0, 0, 15]
             trg_numerical = [TRG.vocab.stoi[token] for token in trg_tokens]
             
             src_list.append(torch.tensor(src_numerical))
+            # 将 src_numerical 转换为 PyTorch 张量
             trg_list.append(torch.tensor(trg_numerical))
         
         # 使用 pad_sequence 来处理不同长度的序列
